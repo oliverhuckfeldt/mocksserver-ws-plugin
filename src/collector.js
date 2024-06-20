@@ -14,7 +14,7 @@ class HandlerCollector {
      */
     constructor(handlerRegistry) {
         /**
-         * Internal reference to the handler registry.
+         * The handler registry.
          * 
          * @type {Object.<string, BaseHandler.constructor>}
          * @private
@@ -44,7 +44,7 @@ class HandlerCollector {
      * @see module:src/plugin._generatePluginApi
      * 
      * @param {string} url - The URL the Handler is registered to.
-     * @param {Object} socketProxy - The proxy object to access the websocket
+     * @param {Object} socketProxy - The proxy object to access the websocket.
      * @param {Object} pluginProxy - The proxy object to access the plugin.
      * 
      * @throws {Error} Thrown if no handler is registered to the given URL.

@@ -24,21 +24,17 @@ class BaseHandler {
      */
     constructor(socketProxy, collector, pluginProxy) {
         /**
-         * The socket proxy object.
-         * @type {Object}
-         * @private
+         * The socket proxy object. @type {Object} @private
          */
         this._socketProxy = socketProxy;
 
         /**
-         * The plugin proxy.
-         * @type {Object}
+         * The plugin proxy. @type {Object}
          */
         this.pluginProxy = pluginProxy;
 
         /**
-         * The collector reference.
-         * @type {HandlerCollector}
+         * The collector reference. @type {HandlerCollector}
          */
         this.collector = collector;
     }
