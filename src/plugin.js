@@ -6,34 +6,54 @@ const ws = require('ws');
 const HandlerCollector = require('./collector');
 
 /**
- * This class needs to be registered as plugin in the Mocks Server configuration.
+ * This is the websocket plugin class.
+ * It must be registered as a plugin in the Mocks server configuration.
  * 
  * @see {@link https://www.mocks-server.org/docs/plugins/installation/}
  */
 class WebsocketPlugin {
     /**
-     * The plugin ID. @type {string} @public
+     * The instance attribute.
+     * 
+     * @type {?WebsocketPlugin}
+     * @private
+     */
+    static _instance = null;
+
+    /**
+     * The plugin ID.
+     * 
+     * @see {@link https://www.mocks-server.org/docs/plugins/development/#plugin-id}
+     * @type {string}
      */
     static get id() {
         return 'websocket';
     }
 
     /**
-     * Creates a new plugin instance. @param {Core} core - The Mocks Server core object.
+     * The public plugin instance.
+     * This attribute allows the plugin to be accessed from any location in the running server, e.g. in the middleware.
+     * 
+     * @type {?WebsocketPlugin}
+     */
+	static get instance() {
+		return this._instance;
+	}
+
+    /**
+     * Creates a new plugin instance.
+     * 
+     * @see {@link https://www.mocks-server.org/docs/plugins/development/#constructorcore}
+     * @param {Object} core - The Mocks Server core object.
      */
     constructor(core) {
-        core.logger.info('Load plugin Websockets');
-
-        /**
-         * The plugin proxy object. @type {Object} @private
-         */
-        this._pluginProxy = this._generatePluginProxy(core);
-
         /**
          * The handler registry option.
-         * Here you can register Handler classes in the mocks-server config.
-         * To do this, use the plugins section and the plugin ID.
-         * The handler key must be set to an object that contains a mapping from the path to the associated handler class.
+         * The register handler classes specified in the mock server configuration are stored here.
+         * This is done in the plugin section of the configuration under the WebSocket command in the handler attribute.
+         * The handler key must be set to an object that contains a mapping from the relative path to the associated handler class.
+         * 
+         * An example configuration looks like this:
          * 
          * plugins: {
          *   websocket: {
@@ -44,7 +64,7 @@ class WebsocketPlugin {
          *   }
          * }
          * 
-         * @type {Option}
+         * @type {Object}
          * @private
          */
         this._handlerOption = core.config.addOption({
@@ -54,42 +74,69 @@ class WebsocketPlugin {
         });
 
         /**
-         * The websocket server instance. @type {!ws.Server} @private
+         * The websocket server instance.
+         * 
+         * @type {?ws.Server}
+         * @private
          */
         this._wsServer = null;
 
         /**
-         * The handler collector instance. @type {!HandlerCollector} @private
+         * The handler collector instance.
+         * 
+         * @type {?HandlerCollector}
+         * @private
          */
         this._handlerCollector = null;
+	
+        // Assign the own object to the static instance attribute.
+		this.constructor._instance = this;
+        core.logger.info('Plugin Websockets created.');
+    }
+
+    /**
+     * The public handler collector instance.
+     * 
+     * @type {?HandlerCollector}
+     */
+    get handlerCollector() {
+        return this._handlerCollector;
     }
 
     /**
      * Initializes the plugin.
+     * Creates a new websocket server instance and prepares the socket for receiving lifecycle events.
+     * 
+     * @see {@link https://www.mocks-server.org/docs/plugins/development/#initcore}
+     * @param {Object} core - The Mocks Server core object.
+     * @
      */
-    init() {
+    init(core) {
         this._wsServer = new ws.Server({noServer: true});
         this._handlerCollector = new HandlerCollector(this._handlerOption.value);
 
         this._wsServer.on('connection', (socket, request) => {
-            const socketProxy = this._generateSocketProxy(socket, request)
-            const handler = this._handlerCollector.createHandler(request.url, socketProxy, this._pluginProxy);
+            const handler = this._handlerCollector._createHandler(request.url, socket, core);
+            handler.onConnect(core);
 
-            // Captures the handler object to handle message events.
             socket.on('message', message => {
-                handler.onMessage(message);
+                handler.onMessage(message, core);
 
             });
-            // Captures the handler object to handle close events.
             socket.on('close', () => {
-                handler.onClose();
-                this._handlerCollector.deleteHandler(handler);
+                handler.onClose(core);
+                this._handlerCollector._deleteHandler(handler);
             });
         });
+        core.logger.info('Plugin Websockets initialized.');
     }
 
     /**
-     * Starts the plugin. @param {Core} core - The Mocks Server core object.
+     * Starts the plugin.
+     * Prepares the underlying server to upgrade an incoming connection to websocket protocol.
+     * 
+     * @see {@link https://www.mocks-server.org/docs/plugins/development/#startcore}
+     * @param {Object} core - The Mocks Server core object.
      */
     start(core) {
         core.server._server.on('upgrade', (request, socket, head) => {
@@ -99,86 +146,17 @@ class WebsocketPlugin {
                 })
             }
         });
+        core.logger.info('Plugin Websockets started.');
     }
 
     /**
-     * A proxy object with encapsulated methods to access socket functionalities.
+     * Stops the plugin.
      * 
-     * @typedef {Object} socketProxy
-     * @property {string} url - The socket URL.
+     * @see {@link https://www.mocks-server.org/docs/plugins/development/#stopcore}
+     * @param {Object} core 
      */
-
-    /**
-     * Generates a proxy object with encapsulated methods to access socket functionalities.
-     * 
-     * @param {Socket} socket - The websocket instance.
-     * @param {Request} request - The request object.
-     * @returns {socketProxy}
-     */
-    _generateSocketProxy(socket, request) {
-        return {
-            get url() {
-                return request.url;
-            },
-            /**
-             * Sends a message to the client. @param {string} message - The message to send.
-             */
-            sendMessage: message => {
-                socket.send(message);
-            }
-        };
-    }
-
-    /**
-     * Generates a proxy object with encapsulated methods to access plugin functionalities, like logging ect.
-     * 
-     * @param {Core} core - The Mocks Server core object.
-     * @returns {Object} 
-     */
-    _generatePluginProxy(core) {
-        return {
-            /**
-             * Logs a message with info level. @param {string} message - The message to log.
-             */
-            logInfo(message) {
-                core.logger.info(message);
-            },
-
-            /**
-             * Logs a message with warning level. @param {string} message - The message to log.
-             */
-            logWarning(message) {
-                core.logger.warn(message);
-            },
-
-            /**
-             * Logs a message with error level. @param {string} message - The message to log.
-             */
-            logError(message) {
-                core.logger.error(message);
-            },
-
-            /**
-             * Logs a message with verbose level. @param {string} message - The message to log.
-             */
-            logVerbose(message) {
-                core.logger.verbose(message);
-            },
-
-            /**
-             * Logs a message with debug level. @param {string} message - The message to log.
-             */
-            logDebug(message) {
-                core.logger.debug(message);
-            },
-
-            /**
-             * Logs a message with silly level. @param {string} message - The message to log.
-             */
-            logSilly(message) {
-                core.logger.silly(message);
-            },
-        };
+    stop(core) {
+        core.logger.info('Plugin Websockets stopped.');
     }
 }
 
