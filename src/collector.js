@@ -3,7 +3,7 @@
  */
 
 /**
- * Manages all registered and currently active handler objects.
+ * Manages all registered and currently active websocket handler objects.
  */
 class HandlerCollector {
     /**
@@ -14,7 +14,7 @@ class HandlerCollector {
      */
     constructor(handlerRegistry) {
         /**
-         * The handler registry.
+         * The handler registry container.
          * 
          * @type {Object.<string, BaseHandler.constructor>}
          * @private
@@ -23,7 +23,7 @@ class HandlerCollector {
 
         /**
          * Contains all handlers that currently have active WebSockets.
-         * If a websocket establishes a connection, the newly created handler will be added to the handler array.
+         * If a websocket establishes a connection, the newly created handler object will be added to the handler array.
          * When a websocket is closed, it is removed from the handler array.
          * 
          * @type {Array.<BaseHandler>}
@@ -33,31 +33,32 @@ class HandlerCollector {
     }
 
     /**
-     * Creates a new websocket handler based on the given URL and returns it.
-     * If no handler is registered to this URL, an error will be thrown.
+     * Creates a new handler object based on the given URL and returns it.
+     * If no handler is registered to the URL, an error will be thrown.
      * 
-     * The method needs to additional parameters:
-     *  - A proxy object to access the underlying websocket object.
-     *  - A proxy object to access plugin functionalities, like logging ect.
+     * The method needs three parameters:
+     *  - The URL to search the registry for the handler class.
+     *  - The socket is passed to the newly created handler.
+     *  - The core reference is bound to the handler constructor and some handler methods.
      * 
-     * @see module:src/plugin._generateSocketApi
-     * @see module:src/plugin._generatePluginApi
-     * 
-     * @param {string} url - The URL the Handler is registered to.
-     * @param {Object} socketProxy - The proxy object to access the websocket.
-     * @param {Object} pluginProxy - The proxy object to access the plugin.
+     * @param {string} url - The URL the handler is registered to.
+     * @param {Object} socketProxy - The socket object to which the handler belongs.
+     * @param {Object} pluginProxy - The core object of the Mocks-Server.
      * 
      * @throws {Error} Thrown if no handler is registered to the given URL.
      * @returns {BaseHandler} The newly created handler.
      */
-    createHandler(url, socketProxy, pluginProxy) {
+    _createHandler(url, socket, core) {
         const HandlerClass = this._handlerRegistry[url];
         if (! HandlerClass) {
             throw new Error(`Websocket Handler for the URL ${url} doesn't exist!`);
         }
-        const handler = new HandlerClass(socketProxy, this, pluginProxy);
-        this._handler.push(handler);
+        const handler = new HandlerClass(url, core);
 
+        handler._setSocket(socket);
+        handler._setCollector(this);
+
+        this._handler.push(handler);
         return handler;
     }
 
@@ -66,23 +67,42 @@ class HandlerCollector {
      * 
      * @param {BaseHandler} handler - The handler to delete.
      */
-    deleteHandler(handler) {
+    _deleteHandler(handler) {
         const index = this._handler.findIndex(hnd => hnd === handler);
         this._handler.splice(index, 1);
     }
 
     /**
-     * Callback function which receives a handler instance.
+     * A function that receives a handler object.
      * 
      * @callback handlerCallback
-     * @param {BaseHandler} handler
+     * @param {BaseHandler} handler - The handler object.
      */
 
     /**
-     * Applies a callback on handler in the collector.
-     * Can be used to broadcast, ect...
+     * Applies a callback function to a handler object registered at this URL.
+     * The callback function receives the handler object as a parameter.
+     * If no handler is registered ti the URL, an error will be thrown.
      * 
-     * @param {handlerCallback} callback 
+     * @param {string} url - The URL where the handler object is registered.
+     * @param {handlerCallback} callback - The function to which the handler object is passed.
+     * 
+     * @throws {Error} Thrown if no no handler is registered to the URL.
+     */
+
+    applyOn(url, callback) {
+        const handler = this._handler.find(handler => handler.url === url);
+        if (! handler) {
+            throw new Error(`Handler object with URL '${url}' not found.`);
+        }
+        callback(handler);
+    }
+
+    /**
+     * Applies a callback function to all handler objects in the collector.
+     * If the collector contains no objects, no action is performed.
+     * 
+     * @param {handlerCallback} callback - The function to which the handler objects is passed.
      */
     applyAll(callback) {
         this._handler.forEach(handler => {
