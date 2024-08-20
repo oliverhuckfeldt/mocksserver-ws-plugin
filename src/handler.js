@@ -4,69 +4,126 @@
 
 /**
  * Base class for a websocket handler.
- * Every handler class you create must derive from this class.
+ * Every custom handler class must be derived from this class.
  */
 class BaseHandler {
     /**
      * Creates a new handler class.
      * 
-     * Each handler need three dependencies when created:
-     *  - A proxy object to access the underlying websocket object.
-     *  - A reference to the handler collector.
-     *  - A proxy object to access plugin functionalities, like logging ect.
+     * Each handler need two dependencies when created:
+     *  - The relative URL at which the websocket can be accessed.
+     *    The URL can be accessed via the url attribute.
      * 
-     * The dependencies are injected by the handler collector automatically, when the handler is created.
-     * If you are overwriting the constructor, don't forget to pass the dependencies to the super constructor.
+     *  - A reference to the Mocks-Server core object.
+     *    This reference is stored in a private _core attribute.
      * 
-     * @param {Object} socketProxy - The proxy object to access the websocket.
-     * @param {HandlerCollector} collector - A reference to the handler collector.
-     * @param {Object} pluginProxy - The proxy object to access the plugin.
+     * The dependencies are injected by the handler collector when the handler is created.
+     * When overriding the constructor of a custom handler, the dependencies must be passed to the super constructor.
+     * 
+     * @param {string} url - The websocket URL.
+     * @param {Object} core - The Mocks-Server core reference.
      */
-    constructor(socketProxy, collector, pluginProxy) {
+    constructor(url, core) {
         /**
-         * The socket proxy object. @type {Object} @private
+         * The websocket URL.
+         * 
+         * @type {string}
+         * @private
          */
-        this._socketProxy = socketProxy;
+        this._url = url;
 
         /**
-         * The plugin proxy. @type {Object}
+         * The core object reference.
+         * 
+         * @type {Object}
+         * @private
          */
-        this.pluginProxy = pluginProxy;
+        this._core = core;
 
         /**
-         * The collector reference. @type {HandlerCollector}
+         * The websocket object.
+         * 
+         * @type {?ws.WebSocket}
+         * @private
+         * */
+        this._socket = null;
+
+        /**
+         * The handler collector object reference.
+         * 
+         * @type {?HandlerCollector}
+         * @private
          */
-        this.collector = collector;
+        this._collector = null;
     }
 
     /**
-     * The URL the socket is linked to. @type {string}
+     * Sets a WebSocket reference to the handler object.
+     * This is done by the handler collector at initialization time.
+     * The socket can only be set once. Further calls have no effect.
+     * 
+     * @param {ws.WebSocket} socket - A websocket object.
      */
+    _setSocket(socket) {
+        this._socket = this._socket || socket;
+    }
+    
+    /**
+     * Sets a collector reference to the handler object.
+     * This is done by the handler collector at initialization time.
+     * The socket can only be set once. Further calls have no effect.
+     * 
+     * @param {HandlerCollector} collector - The handler collector reference.
+     */
+    _setCollector(collector) {
+        this._collector = this._collector || collector;
+    }
+
+    /** The relative URL the socket is linked to. @type {string} */
     get url() {
-        return this._socketProxy.url;
+        return this._url;
+    }
+    
+    /** The handler collector reference. @type {HandlerCollector} */
+    get collector() {
+        return this._collector;
     }
 
     /**
-     * A stub method that needs to be overridden.
+     * This is a stub method that can be overridden.
      * It is called when the socket receives a message from the client.
+     * The method receives a core reference from the Mocks-Server.
      * 
      * @param {string} message - The message that was received from the client.
+     * @param {Object} core - The Mocks-Server core reference.
      */
-    onMessage(message) {}
+    onMessage(message, core) {}
 
     /**
-     * A stub method that needs to be overridden.
+     * This is a stub method that can be overridden.
      * It is called when the socket is closed.
+     * The method receives a core reference from the Mocks-Server.
+     * 
+     * @param {Object} core - The Mocks-Server core reference.
      */
-    onClose() {}
+    onClose(core) {}
 
     /**
-     * Sends a message to the client
+     * This is a stub method that can be overridden.
+     * It is called at connection time immediately after the handler is created.
+     * The method receives a core reference from the Mocks-Server.
      * 
-     * @param {string} message - The message.
+     * @param {Object} core - The Mocks-Server core reference.
+     */
+    onConnect(core) {}
+
+    /**
+     * Sends a message to the client.
+     * 
+     * @param {string} message - The message to send.
      */
     writeMessage(message) {
-        this._socketProxy.sendMessage(message);
+        this._socket.send(message);
     }
 }
 
