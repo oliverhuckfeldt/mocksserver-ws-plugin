@@ -1,23 +1,21 @@
 const BaseHandler = require('../src/handler');
 
 class Handler extends BaseHandler {
-    constructor(socketProxy, collector, pluginProxy) {
-        super(socketProxy, collector, pluginProxy);
-        this.pluginProxy.logInfo(`${this.url} handler created.`);
+    constructor(url, core) {
+        super(url, core);
+        core.logger.info(`${this.url} handler created.`);
     }
 
-    onMessage(message) {
-        this.pluginProxy.logInfo(message);
+    onConnect(core) {
+        core.logger.info(`${this.url} handler connected.`);
     }
 
-    onClose() {
-        this.pluginProxy.logInfo(`${this.url} handler closed.`);
+    onMessage(message, core) {
+        core.logger.info(message);
     }
 
-    broadcast() {
-        this.collector.applyAll(handler => {
-            handler.writeMessage(`${this.url} broadcast to ${handler.url}.`);
-        });
+    onClose(core) {
+        core.logger.info(`${this.url} handler closed.`);
     }
 }
 

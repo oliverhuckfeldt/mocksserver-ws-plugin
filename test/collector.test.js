@@ -1,61 +1,91 @@
 const Handler = require('./handler');
 const HandlerCollector = require('../src/collector');
-const { pluginApiMock, generateSocketApiMock } = require('./mocks');
 
-let collector = null;
-let socketApiMockFoo = null;
-let socketApiMockBar = null;
-let socketApiMockBaz = null;
+const core = {
+    logger: {
+        info: jest.fn(message => message)
+    }
+};
 
-beforeAll(() => {
-    collector = new HandlerCollector({
-        '/foo': Handler,
-        '/bar': Handler,
-        '/baz': Handler
+const socket = {
+    send: jest.fn(message => message)
+};
+
+const registry = {
+    '/foo': Handler,
+    '/bar': Handler,
+    '/baz': Handler
+};
+
+let collector;
+
+beforeEach(() => {
+    collector = new HandlerCollector(registry);
+    Object.keys(registry).forEach(path => {
+        const handler = collector._createHandler(path, socket, core);
+        handler.onConnect(core);
     });
-    socketApiMockFoo = generateSocketApiMock('/foo');
-    socketApiMockBar = generateSocketApiMock('/bar');
-    socketApiMockBaz = generateSocketApiMock('/baz');
 });
 
 afterEach(() => {
-    pluginApiMock.logInfo.mockClear();
-    socketApiMockFoo.sendMessage.mockClear();
-    socketApiMockBar.sendMessage.mockClear();
-    socketApiMockBaz.sendMessage.mockClear();
+    core.logger.info.mockClear();
 });
 
-afterAll(() => {
-    socketApiMockFoo = null;
-    socketApiMockBar = null;
-    socketApiMockBaz = null;
+describe('Handler creation from registry', () => {    
+    test('All handler created', () => {
+        expect(collector._handler.length).toBe(Object.keys(registry).length);
+    });
+
+    test('Handler URL matches URL in registry', () => {
+        collector._handler.forEach(handler => {
+            expect(Object.keys(registry)).toContain(handler.url);
+        });
+    });
+
+    test('Handler contains collector reference', () => {
+        collector._handler.forEach(handler => {
+            expect(handler.collector).toBe(collector);
+        });
+    });
 });
 
-test('handler broadcast', () => {
-    const fooHandler = collector.createHandler('/foo', socketApiMockFoo, pluginApiMock);
-    const barHandler = collector.createHandler('/foo', socketApiMockBar, pluginApiMock);
-    const bazHandler = collector.createHandler('/foo', socketApiMockBaz, pluginApiMock);
+describe('Handler methods', () => {
+    test('Call constructor', () => {
+        expect(core.logger.info.mock.calls[0][0]).toBe('/foo handler created.');
+        expect(core.logger.info.mock.calls[2][0]).toBe('/bar handler created.');
+        expect(core.logger.info.mock.calls[4][0]).toBe('/baz handler created.');
+    });
 
-    fooHandler.onMessage(`${fooHandler.url} handler message.`);
-    fooHandler.broadcast();
+    test('Call onConnect', () => {
+        expect(core.logger.info.mock.calls[1][0]).toBe('/foo handler connected.');
+        expect(core.logger.info.mock.calls[3][0]).toBe('/bar handler connected.');
+        expect(core.logger.info.mock.calls[5][0]).toBe('/baz handler connected.');
+    });
 
-    fooHandler.onClose();
-    barHandler.onClose();
-    bazHandler.onClose();
+    test('Call onMessage', () => {
+        collector.applyAll(handler => {
+            handler.onMessage(`${handler.url} handler message received.`, core);
+        });
+        expect(core.logger.info.mock.calls[6][0]).toBe('/foo handler message received.');
+        expect(core.logger.info.mock.calls[7][0]).toBe('/bar handler message received.');
+        expect(core.logger.info.mock.calls[8][0]).toBe('/baz handler message received.');
+    });
 
-    expect(pluginApiMock.logInfo.mock.calls).toHaveLength(7);
-    expect(pluginApiMock.logInfo.mock.calls[0][0]).toBe('/foo handler created.');
-    expect(pluginApiMock.logInfo.mock.calls[1][0]).toBe('/bar handler created.');
-    expect(pluginApiMock.logInfo.mock.calls[2][0]).toBe('/baz handler created.');
-    expect(pluginApiMock.logInfo.mock.calls[3][0]).toBe('/foo handler message.');
-    expect(pluginApiMock.logInfo.mock.calls[4][0]).toBe('/foo handler closed.');
-    expect(pluginApiMock.logInfo.mock.calls[5][0]).toBe('/bar handler closed.');
-    expect(pluginApiMock.logInfo.mock.calls[6][0]).toBe('/baz handler closed.');
+    test('Call writeMessage', () => {
+        collector.applyAll(handler => {
+            handler.writeMessage(`${handler.url} handler message send.`);
+        });
+        expect(socket.send.mock.calls[0][0]).toBe('/foo handler message send.')
+        expect(socket.send.mock.calls[1][0]).toBe('/bar handler message send.')
+        expect(socket.send.mock.calls[2][0]).toBe('/baz handler message send.')
+    });
 
-    expect(socketApiMockFoo.sendMessage.mock.calls).toHaveLength(1);
-    expect(socketApiMockBar.sendMessage.mock.calls).toHaveLength(1);
-    expect(socketApiMockBaz.sendMessage.mock.calls).toHaveLength(1);
-    expect(socketApiMockFoo.sendMessage.mock.calls[0][0]).toBe('/foo broadcast to /foo.');
-    expect(socketApiMockBar.sendMessage.mock.calls[0][0]).toBe('/foo broadcast to /bar.');
-    expect(socketApiMockBaz.sendMessage.mock.calls[0][0]).toBe('/foo broadcast to /baz.');
+    test('Call onClose', () => {
+        collector.applyAll(handler => {
+            handler.onClose(core);
+        });
+        expect(core.logger.info.mock.calls[6][0]).toBe('/foo handler closed.');
+        expect(core.logger.info.mock.calls[7][0]).toBe('/bar handler closed.');
+        expect(core.logger.info.mock.calls[8][0]).toBe('/baz handler closed.');
+    });
 });
