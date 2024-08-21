@@ -42,8 +42,8 @@ class HandlerCollector {
      *  - The core reference is bound to the handler constructor and some handler methods.
      * 
      * @param {string} url - The URL the handler is registered to.
-     * @param {Object} socketProxy - The socket object to which the handler belongs.
-     * @param {Object} pluginProxy - The core object of the Mocks-Server.
+     * @param {Object} socket - The socket object to which the handler belongs.
+     * @param {Object} core - The core object of the Mocks-Server.
      * 
      * @throws {Error} Thrown if no handler is registered to the given URL.
      * @returns {BaseHandler} The newly created handler.

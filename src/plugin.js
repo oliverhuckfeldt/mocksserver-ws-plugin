@@ -121,7 +121,6 @@ class WebsocketPlugin {
 
             socket.on('message', message => {
                 handler.onMessage(message, core);
-
             });
             socket.on('close', () => {
                 handler.onClose(core);
