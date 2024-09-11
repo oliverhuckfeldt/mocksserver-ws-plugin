@@ -1,6 +1,6 @@
 {
   "name": "mocksserver-ws-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A plugin for the Mocks-Server project that provides WebSocket integration. See https://www.mocks-server.org for more information.",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,7 @@
     "plugin"
   ],
   "author": "Oliver Huckfeldt",
+  "homepage": "https://github.com/oliverhuckfeldt/mocksserver-ws-plugin#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/oliverhuckfeldt/mocksserver-ws-plugin.git"
