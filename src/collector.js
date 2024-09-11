@@ -80,27 +80,25 @@ class HandlerCollector {
      */
 
     /**
-     * Applies a callback function to a handler object registered at this URL.
-     * The callback function receives the handler object as a parameter.
-     * If no handler is registered ti the URL, an error will be thrown.
+     * Applies a callback function to all active handler objects with the specified URL.
+     * The callback function receives the handler object as parameter.
+     * If the collector is empty or does not contain any such handler objects, no action is performed.
      * 
      * @param {string} url - The URL where the handler object is registered.
      * @param {handlerCallback} callback - The function to which the handler object is passed.
-     * 
-     * @throws {Error} Thrown if no no handler is registered to the URL.
      */
 
     applyOn(url, callback) {
-        const handler = this._handler.find(handler => handler.url === url);
-        if (! handler) {
-            throw new Error(`Handler object with URL '${url}' not found.`);
-        }
-        callback(handler);
+        const handlers = this._handler.filter(handler => handler.url === url);
+        handlers.forEach(handler => {
+            callback(handler);
+        });
     }
 
     /**
      * Applies a callback function to all handler objects in the collector.
-     * If the collector contains no objects, no action is performed.
+     * The callback function receives the handler object as parameter.
+     * If the collector is empty, no action is performed.
      * 
      * @param {handlerCallback} callback - The function to which the handler objects is passed.
      */
