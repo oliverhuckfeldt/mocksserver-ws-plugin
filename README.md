@@ -1,8 +1,10 @@
 # Mocks-Server Websocket Plugin
-This is a plugin for the [Mocks-Server](https://www.mocks-server.org/) project to add Websocket functionality.
+This is a plugin for the Mocks-Server project to add Websocket functionality. Please read the [Mocks-Server Documentation](https://www.mocks-server.org/) before proceeding.
 
 ## Description
-The Mocks Server project is an HTTP mock server for simulating web APIs at software development time. It can handle any type of HTTP connection, but does not have functionality to establish WebSocket connections. By using the plugin, the Mocks-Server gets the ability to test WebSocket connections in your project development.
+The plugin extends the functionality of the Mocks-Server so that WebSocket connections can be used within the application. This has the advantage over a separate WebSocket test server that resources can be shared and WebSockets can be accessed from middleware variants. To achieve this, the plugin provides central management of all existing socket connections, which can be accessed from anywhere in the application.
+
+This software is currently in a very early stage and has not been fully tested. Bugs are to be expected! The functionality is still limited, but meets the requirements to successfully close the gap between WebSockets and your Mock-API.
 
 ## Installation
 To install the plugin, run the following command:
@@ -11,12 +13,14 @@ To install the plugin, run the following command:
 npm install -D mocksserver-ws-plugin
 ```
 
-Detailed installation instructions can be found [here](https://www.mocks-server.org/docs/installation/).
+Detailed instructions about the installation process can be found [here](https://www.mocks-server.org/docs/installation/).
 
 ## Basic Usage
-On the first run the Mocks-Server will create a configuration file. We need this file to register the plugin and the handler classes later. Please visit this [link](https://www.mocks-server.org/docs/quick-start/) to view the quick start guide.
+> **NOTE:** If you are new to the Mocks Server project, I highly recommend reading the complete [Mocks-Server Documentation](https://www.mocks-server.org/docs/overview/) first!
 
-Connections are established using handler classes. A handler class is associated with a route and a handler object contains the underlying socket. To create a simple handler class, just extend the BaseHandler from the plugin package. The only method you need to implement is the ``onMessage`` method, which is called when messages arrive.:
+On the first run the Mocks-Server will create a configuration file. We need this file later to register the plugin and the handler classes. More information about this can be found in the [quick start guide](https://www.mocks-server.org/docs/quick-start/).
+
+Connections are established using handler classes. A handler object is associated with a route. To create a simple handler class, just extend the ``BaseHandler`` from the plugin package. The only method you must implement is the ``onMessage`` method, which is called when a message arrive:
 
 ```javascript
 // handler.js
@@ -30,9 +34,9 @@ class FooHandler extends BaseHandler {
 
 module.exports = FooHandler
 ```
-The above handler simply acts as an echo server, which sends the incoming message back to the client with the addition ``Message from the client:``.
+The above handler simply acts as an echo server, which sends the incoming message back to the client with the additional text ``Message from the client:``.
 
-Now we can register the plugin and the handler class in the configuration file. The handler class must be made available together with the route as a key-value pair in the handler attribute. This is the path at which the WebSocket can be connected.
+Now we can register the plugin and the handler class in the configuration file. The class reference must be assigned to the route. This is the relative path where the WebSocket is provided by the server.
 
 ```javascript
 // mocks.config.js
@@ -56,12 +60,12 @@ module.exports = {
 };
 ```
 
-After starting the server, the handler can be contacted at the following URL:
+After starting the server, the handler can be reached at the following URL:
 ```text
 ws://<host>:<port>/foo
 ```
 
-To test this, write a simple client script:
+To test this, we can write a simple client script:
 
 ```javascript
 // client.js
@@ -79,9 +83,9 @@ ws.on('message', message => {
 The program will print ``Server said: Message from the client: Hello from client.`` in the console.
 
 ## Advanced usage
-In case you want to access other handlers, each Handler object has a reference to the Handler collector. To do this, you need the route under which the handler is registered. You cannot access the handler directly. Instead, there are two methods to pass callbacks to the collector: ``applyOn`` and ``applyAll``.
+Each handler object has a reference to the handler collector, which manages the handler objects. At the moment the collector provides two methods to access other handlers: ``applyOn`` and ``applyAll``. With ``applyOn`` it is possible to call a function on all handlers connected to a specific path.
 
-For example, if you want to send a message received by a handler registered at ``/foo`` through another handler registered at ``/bar``, you can use the following code snippet:
+For example, say you want to send a message received by a handler connected at ``/foo`` to all clients of another handlers connected at ``/bar``. To do this you can use the following code snippet:
 
 ```javascript
 class FooHandler extends BaseHandler {
@@ -93,7 +97,7 @@ class FooHandler extends BaseHandler {
 }
 ```
 
-If you want to perform an action on all handlers, e.g. for a broadcast, it is possible to use the "applyAll" method. The callback method that you pass there is applied to all handlers in the collector. The following code snippet illustrates how a received message is sent by all handlers in the collector to their clients:
+If you want to perform an action on all handlers currently connected (e.g. for a broadcast) it is possible to use the ``applyAll`` method. It receives just a callback method without the path:
 
 ```javascript
 class FooHandler extends BaseHandler {
@@ -105,7 +109,7 @@ class FooHandler extends BaseHandler {
 }
 ```
 
-If you want to access the collector elsewhere in the program, for example in a middleware, you can do so via the ``instance`` property of the plugin class. The instance exposes the handlerCollector property. This code snippet shows how to send a POST-Message received by a middleware to a WebSocket handler registered at the route ``/foo``:
+If you want to access the collector elsewhere in the program, for example in a middleware variant, you can do so via the ``instance`` property of the plugin class. The instance exposes the collector property named as ``handlerCollector``. The following code snippet shows how to send a POST-Message received by a middleware variant to a WebSocket handler connected at the route ``/foo``:
 
 ```javascript
 // mocks/routes/<route-name>.js
@@ -137,7 +141,10 @@ module.exports = [
 ];
 ```
 
-For more information about using middleware, see the [documentation](https://www.mocks-server.org/docs/usage/variants/middleware/).
+For more information about using middleware variants, see the [documentation](https://www.mocks-server.org/docs/usage/variants/middleware/).
+
+## More information
+If you want to learn more about this plugin, please read the source code. Every functionality is very well described via JSDoc.
 
 ## Copyright and license
 The project is written and documented by Oliver Huckfeldt &copy; 2024. Code and documentation is released under MIT-License.
