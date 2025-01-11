@@ -20,7 +20,7 @@ Detailed instructions about the installation process can be found [here](https:/
 
 On the first run the Mocks-Server will create a configuration file. We need this file later to register the plugin and the handler classes. More information about this can be found in the [quick start guide](https://www.mocks-server.org/docs/quick-start/).
 
-Connections are established using handler classes. A handler object is associated with a route. To create a simple handler class, just extend the ``BaseHandler`` from the plugin package. The only method you must implement is the ``onMessage`` method, which is called when a message arrive:
+Connections are established using handler classes. A handler object is associated with a route. To create a simple handler class, just extend the ``BaseHandler`` from the plugin package. The only methods you must implement are the ``onMessage`` method or ``onJsonMessage``, if the client sends a message in the JSON-Format. The plugin tries to parse incoming message as JSON first. If that succeeds, the ``onJsonMessage`` method is called. If the message could not be parsed a valid JSON, the ``onMessage`` method is called instead.
 
 ```javascript
 // handler.js
@@ -30,11 +30,16 @@ class FooHandler extends BaseHandler {
   onMessage(message) {
     this.writeMessage(`Message from the client: ${message}`)
   }
+
+  onJsonMessage(obj) {
+    obj.note = 'Message from the client'
+    this.writeJsonMessage(obj)
+  }
 }
 
 module.exports = FooHandler
 ```
-The above handler simply acts as an echo server, which sends the incoming message back to the client with the additional text ``Message from the client:``.
+The above handler simply acts as an echo server, which sends the incoming message back to the client with the additional text ``Message from the client:``. If JSON-Message is received, a new property named ``note`` with the same text is appended before it is sent back.
 
 Now we can register the plugin and the handler class in the configuration file. The class reference must be assigned to the route. This is the relative path where the WebSocket is provided by the server.
 

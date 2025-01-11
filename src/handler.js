@@ -101,6 +101,17 @@ class BaseHandler {
 
     /**
      * This is a stub method that can be overridden.
+     * It is called when the socket receives a JSON message from the client.
+     * The received message is formatted as object an then passed to the method.
+     * The method receives a core reference from the Mocks-Server.
+     * 
+     * @param {object} obj - The JSON message that was received from the client formatted as object.
+     * @param {Object} core - The Mocks-Server core reference.
+     */
+    onJsonMessage(obj, core) {}
+
+    /**
+     * This is a stub method that can be overridden.
      * It is called when the socket is closed.
      * The method receives a core reference from the Mocks-Server.
      * 
@@ -124,6 +135,20 @@ class BaseHandler {
      */
     writeMessage(message) {
         this._socket.send(message);
+    }
+    /**
+     * Converts an object to a JSON-String and sends it message to the client.
+     * 
+     * @param {Object} obj - The object to be parsed as JSON-String.
+     */
+    writeJsonMessage(obj) {
+        try {
+            const message = JSON.stringify(obj);
+            this._socket.send(message);
+        }
+        catch(e) {
+            this._core.logger.error(e);
+        }
     }
 }
 

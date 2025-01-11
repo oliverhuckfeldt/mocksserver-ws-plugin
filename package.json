@@ -1,6 +1,6 @@
 {
   "name": "mocksserver-ws-plugin",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A plugin for the Mocks-Server project that provides WebSocket integration. See https://www.mocks-server.org for more information.",
   "main": "index.js",
   "scripts": {

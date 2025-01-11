@@ -120,7 +120,26 @@ class WebsocketPlugin {
             handler.onConnect(core);
 
             socket.on('message', message => {
-                handler.onMessage(message, core);
+                try {
+                    if (typeof message !== 'string') {
+                        message = message.toString();
+                    }
+                    try {
+                        const obj = JSON.parse(message);
+                        handler.onJsonMessage(obj, core);
+                        return;
+                    }
+                    catch(e) {
+                        if (e instanceof SyntaxError) {
+                            handler.onMessage(message, core);
+                            return;
+                        }
+                        throw e;
+                    }
+                }
+                catch(e) {
+                    core.logger.error(e);
+                }
             });
             socket.on('close', () => {
                 handler.onClose(core);
