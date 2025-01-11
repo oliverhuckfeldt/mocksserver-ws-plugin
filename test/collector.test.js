@@ -83,6 +83,16 @@ describe('Handler methods', () => {
         expect(core.logger.info.mock.calls[8][0]).toBe('/baz handler message received.');
     });
 
+    test('Call onJsonMessage', () => {
+        collector._handler.forEach(handler => {
+            handler.onJsonMessage({url: handler.url, message: 'Message received.'}, core);
+        });
+        expect(core.logger.info.mock.calls).toHaveLength(9);
+        expect(core.logger.info.mock.calls[6][0]).toMatchObject({url: '/foo', message: 'Message received.'});
+        expect(core.logger.info.mock.calls[7][0]).toMatchObject({url: '/bar', message: 'Message received.'});
+        expect(core.logger.info.mock.calls[8][0]).toMatchObject({url: '/baz', message: 'Message received.'});
+    });
+
     test('Call writeMessage', () => {
         collector._handler.forEach(handler => {
             handler.writeMessage(`${handler.url} handler message send.`);
@@ -91,6 +101,28 @@ describe('Handler methods', () => {
         expect(socket.send.mock.calls[0][0]).toBe('/foo handler message send.');
         expect(socket.send.mock.calls[1][0]).toBe('/bar handler message send.');
         expect(socket.send.mock.calls[2][0]).toBe('/baz handler message send.');
+    });
+
+    test('Call writeJsonMessage', () => {
+        collector._handler.forEach(handler => {
+            handler.writeJsonMessage({url: handler.url, message: 'Message send.'});
+        });
+        expect(socket.send.mock.calls).toHaveLength(3);
+
+        expect(socket.send.mock.calls[0][0]).toMatch(/url/);
+        expect(socket.send.mock.calls[0][0]).toMatch(/\/foo/);
+        expect(socket.send.mock.calls[0][0]).toMatch(/message/);
+        expect(socket.send.mock.calls[0][0]).toMatch(/Message send./);
+
+        expect(socket.send.mock.calls[1][0]).toMatch(/url/);
+        expect(socket.send.mock.calls[1][0]).toMatch(/\/bar/);
+        expect(socket.send.mock.calls[1][0]).toMatch(/message/);
+        expect(socket.send.mock.calls[1][0]).toMatch(/Message send./);
+
+        expect(socket.send.mock.calls[2][0]).toMatch(/url/);
+        expect(socket.send.mock.calls[2][0]).toMatch(/\/baz/);
+        expect(socket.send.mock.calls[2][0]).toMatch(/message/);
+        expect(socket.send.mock.calls[2][0]).toMatch(/Message send./);
     });
 
     test('Call onClose', () => {

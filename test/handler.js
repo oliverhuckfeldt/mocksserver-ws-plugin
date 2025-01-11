@@ -14,6 +14,10 @@ class Handler extends BaseHandler {
         core.logger.info(message);
     }
 
+    onJsonMessage(obj, core) {
+        core.logger.info(obj);
+    }
+
     onClose(core) {
         core.logger.info(`${this.url} handler closed.`);
     }
